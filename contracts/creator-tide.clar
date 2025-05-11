@@ -13,16 +13,17 @@
 (define-constant ERR-FUNDING-INACTIVE (err u105))
 (define-constant ERR-INSUFFICIENT-FUNDING (err u106))
 (define-constant ERR-MILESTONE-NOT-FOUND (err u107))
-(define-constant ERR-ALREADY-BACKED (err u108))
-(define-constant ERR-ALREADY-VOTED (err u109))
-(define-constant ERR-MILESTONE-NOT-ACTIVE (err u110))
-(define-constant ERR-MILESTONE-ALREADY-APPROVED (err u111))
-(define-constant ERR-NOT-MILESTONE-REVIEWER (err u112))
-(define-constant ERR-REFUND-NOT-AVAILABLE (err u113))
-(define-constant ERR-TRANSFER-FAILED (err u114))
-(define-constant ERR-DEADLINE-PASSED (err u115))
-(define-constant ERR-DEADLINE-NOT-PASSED (err u116))
-(define-constant ERR-INVALID-REVIEWER-SETUP (err u117))
+(define-constant ERR-MILESTONE-NOT-APPROVED (err u108))
+(define-constant ERR-ALREADY-BACKED (err u109))
+(define-constant ERR-ALREADY-VOTED (err u110))
+(define-constant ERR-MILESTONE-NOT-ACTIVE (err u111))
+(define-constant ERR-MILESTONE-ALREADY-APPROVED (err u112))
+(define-constant ERR-NOT-MILESTONE-REVIEWER (err u113))
+(define-constant ERR-REFUND-NOT-AVAILABLE (err u114))
+(define-constant ERR-TRANSFER-FAILED (err u115))
+(define-constant ERR-DEADLINE-PASSED (err u116))
+(define-constant ERR-DEADLINE-NOT-PASSED (err u117))
+(define-constant ERR-INVALID-REVIEWER-SETUP (err u118))
 
 ;; Project status enumeration
 (define-constant STATUS-DRAFT u0)      ;; Project created but not yet open for funding
@@ -354,38 +355,6 @@
       { project-id: project-id }
       (merge project { status: STATUS-CANCELLED })
     )
-    
-    (ok true)
-  )
-)
-
-;; Request refund when project is cancelled or failed to meet funding goal
-(define-public (request-refund (project-id uint))
-  (let (
-    (project (unwrap! (map-get? projects { project-id: project-id }) ERR-PROJECT-NOT-FOUND))
-    (backer-info (unwrap! (map-get? backers { project-id: project-id, backer: tx-sender }) ERR-PROJECT-NOT-FOUND))
-  )
-    ;; Validation checks
-    (asserts! (not (get refunded backer-info)) ERR-REFUND-NOT-AVAILABLE)
-    (asserts! 
-      (or 
-        (is-eq (get status project) STATUS-CANCELLED)
-        (and 
-          (is-eq (get status project) STATUS-FUNDING)
-          (is-funding-deadline-passed project-id)
-        )
-      ) 
-      ERR-REFUND-NOT-AVAILABLE
-    )
-    
-    ;; Mark as refunded
-    (map-set backers
-      { project-id: project-id, backer: tx-sender }
-      (merge backer-info { refunded: true })
-    )
-    
-    ;; Transfer refund
-    (as-contract (stx-transfer? (get amount backer-info) tx-sender tx-sender))
     
     (ok true)
   )
